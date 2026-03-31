@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify IQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Input Screen -->
+    <div id="screen-input" class="screen active">
+      <img src="/daft-punk.png" alt="" class="hero-img" />
+      <h1 class="title">Spotify IQ</h1>
+      <p class="subtitle">Paste a playlist link below.</p>
+      <div class="input-group">
+        <input
+          type="text"
+          id="playlist-input"
+          placeholder="https://open.spotify.com/playlist/..."
+          spellcheck="false"
+          autocomplete="off"
+        />
+        <button id="analyze-btn">Analyze</button>
+      </div>
+      <p id="error-msg" class="error"></p>
+      <p class="disclaimer">Based on Virgil Griffith's "Music That Makes You Dumb"</p>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="screen-loading" class="screen">
+      <div class="loader"></div>
+      <p class="loading-text">Calculating your intelligence...</p>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="screen-result" class="screen">
+      <p class="result-label">Your estimated IQ</p>
+      <div class="iq-number" id="iq-number">0</div>
+      <ul class="verdicts" id="verdicts"></ul>
+
+      <div class="playlist-info" id="playlist-info">
+        <img id="playlist-img" src="" alt="" />
+        <div>
+          <p class="playlist-name" id="playlist-name"></p>
+          <p class="playlist-meta" id="playlist-meta"></p>
+        </div>
+      </div>
+
+      <div class="breakdown" id="breakdown">
+        <h3>Genre Breakdown</h3>
+        <div id="genre-bars"></div>
+      </div>
+
+      <div class="modifiers" id="modifiers"></div>
+
+      <button id="try-again-btn" class="secondary-btn">Try Another</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
