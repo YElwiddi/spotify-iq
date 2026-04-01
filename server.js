@@ -358,6 +358,6 @@ app.post("/api/analyze", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Spotify IQ running at http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Spotify IQ running on port ${PORT}`);
 });
