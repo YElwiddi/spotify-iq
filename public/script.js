@@ -5,6 +5,9 @@ const input = document.getElementById("playlist-input");
 const analyzeBtn = document.getElementById("analyze-btn");
 const errorMsg = document.getElementById("error-msg");
 const tryAgainBtn = document.getElementById("try-again-btn");
+const progressBar = document.getElementById("progress-bar");
+const progressText = document.getElementById("progress-text");
+const progressDetail = document.getElementById("progress-detail");
 
 function showScreen(screen) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
@@ -18,7 +21,6 @@ function animateNumber(el, target, duration = 1200) {
   function update(now) {
     const elapsed = now - startTime;
     const progress = Math.min(elapsed / duration, 1);
-    // Ease out cubic
     const eased = 1 - Math.pow(1 - progress, 3);
     el.textContent = Math.round(start + (target - start) * eased);
     if (progress < 1) requestAnimationFrame(update);
@@ -27,7 +29,7 @@ function animateNumber(el, target, duration = 1200) {
   requestAnimationFrame(update);
 }
 
-async function analyze() {
+function analyze() {
   const url = input.value.trim();
   if (!url) {
     errorMsg.textContent = "Paste a Spotify playlist link first.";
@@ -36,37 +38,56 @@ async function analyze() {
 
   errorMsg.textContent = "";
   analyzeBtn.disabled = true;
+  progressBar.style.width = "0%";
+  progressText.textContent = "Connecting...";
+  progressDetail.textContent = "";
   showScreen(loadingScreen);
 
-  try {
-    const res = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playlistUrl: url }),
-    });
+  const eventSource = new EventSource(
+    `/api/analyze?url=${encodeURIComponent(url)}`
+  );
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.error || "Something went wrong");
+  eventSource.addEventListener("progress", (e) => {
+    const data = JSON.parse(e.data);
+    progressBar.style.width = data.percent + "%";
+    progressText.textContent = data.stage;
+    if (data.current && data.total) {
+      progressDetail.textContent = `${data.current} / ${data.total} artists`;
     }
+  });
 
+  eventSource.addEventListener("result", (e) => {
+    eventSource.close();
+    const data = JSON.parse(e.data);
     renderResult(data);
     showScreen(resultScreen);
-  } catch (err) {
-    showScreen(inputScreen);
-    errorMsg.textContent = err.message;
-  } finally {
     analyzeBtn.disabled = false;
-  }
+  });
+
+  eventSource.addEventListener("error", (e) => {
+    eventSource.close();
+    try {
+      const data = JSON.parse(e.data);
+      errorMsg.textContent = data.error || "Something went wrong";
+    } catch {
+      errorMsg.textContent = "Connection lost. Try again.";
+    }
+    showScreen(inputScreen);
+    analyzeBtn.disabled = false;
+  });
+
+  eventSource.onerror = () => {
+    eventSource.close();
+    errorMsg.textContent = "Connection lost. Try again.";
+    showScreen(inputScreen);
+    analyzeBtn.disabled = false;
+  };
 }
 
 function renderResult(data) {
-  // IQ number animation
   const iqEl = document.getElementById("iq-number");
   animateNumber(iqEl, data.iq);
 
-  // Verdicts
   const verdictsEl = document.getElementById("verdicts");
   verdictsEl.innerHTML = "";
   for (const v of data.verdicts) {
@@ -75,8 +96,6 @@ function renderResult(data) {
     verdictsEl.appendChild(li);
   }
 
-  // Playlist info
-  const playlistInfo = document.getElementById("playlist-info");
   const img = document.getElementById("playlist-img");
   if (data.playlistImage) {
     img.src = data.playlistImage;
@@ -88,7 +107,6 @@ function renderResult(data) {
   document.getElementById("playlist-meta").textContent =
     `${data.trackCount} tracks \u00B7 ${data.artistCount} artists`;
 
-  // Genre bars
   const barsContainer = document.getElementById("genre-bars");
   barsContainer.innerHTML = "";
 
@@ -107,14 +125,12 @@ function renderResult(data) {
       `;
       barsContainer.appendChild(bar);
 
-      // Animate bar after a tick
       requestAnimationFrame(() => {
         bar.querySelector(".bar-fill").style.width = pct + "%";
       });
     }
   }
 
-  // Modifiers
   const modContainer = document.getElementById("modifiers");
   modContainer.innerHTML = "";
   for (const mod of data.modifiers) {

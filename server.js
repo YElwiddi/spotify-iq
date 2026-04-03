@@ -209,7 +209,7 @@ function calculateIQ(genreCounts) {
   modifiers.push({ name: "Cosmic variance", value: randomOffset });
   baseIQ += randomOffset;
 
-  baseIQ = Math.max(70, Math.min(145, Math.round(baseIQ)));
+  baseIQ = Math.max(60, Math.min(150, Math.round(baseIQ)));
   breakdown.sort((a, b) => b.weight - a.weight);
 
   return { iq: baseIQ, breakdown: breakdown.slice(0, 15), modifiers };
@@ -280,20 +280,32 @@ function getVerdicts(iq, breakdown, topArtists) {
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 
-app.post("/api/analyze", async (req, res) => {
+app.get("/api/analyze", async (req, res) => {
+  // SSE for streaming progress
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const send = (event, data) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
   try {
-    const { playlistUrl } = req.body;
+    const playlistUrl = req.query.url;
     if (!playlistUrl) {
-      return res.status(400).json({ error: "Playlist URL is required" });
+      send("error", { error: "Playlist URL is required" });
+      return res.end();
     }
 
     const playlistId = extractPlaylistId(playlistUrl);
     if (!playlistId) {
-      return res.status(400).json({ error: "Invalid Spotify playlist URL" });
+      send("error", { error: "Invalid Spotify playlist URL" });
+      return res.end();
     }
 
     // Step 1: Get tracks from Spotify embed page
-    console.log("Fetching playlist from embed...");
+    send("progress", { stage: "Fetching playlist...", percent: 0 });
     const playlist = await getPlaylistFromEmbed(playlistId);
     console.log(
       `Playlist: "${playlist.name}", ${playlist.tracks.length} tracks`
@@ -301,7 +313,10 @@ app.post("/api/analyze", async (req, res) => {
 
     // Step 2: Get unique artist names
     const uniqueArtists = [...new Set(playlist.tracks.map((t) => t.artist))];
-    console.log(`Found ${uniqueArtists.length} unique artists`);
+    send("progress", {
+      stage: `Found ${uniqueArtists.length} artists to analyze`,
+      percent: 5,
+    });
 
     // Step 3: Fetch genres from MusicBrainz (rate limited: 1 req/sec)
     const genreCounts = {};
@@ -310,7 +325,6 @@ app.post("/api/analyze", async (req, res) => {
     for (const artistName of uniqueArtists) {
       const genres = await getArtistGenres(artistName);
 
-      // Count how many tracks this artist has in the playlist
       const artistTrackCount = playlist.tracks.filter(
         (t) => t.artist === artistName
       ).length;
@@ -320,22 +334,26 @@ app.post("/api/analyze", async (req, res) => {
       }
 
       processed++;
-      if (processed % 10 === 0) {
-        console.log(
-          `Processed ${processed}/${uniqueArtists.length} artists...`
-        );
-      }
+      const percent = 5 + Math.round((processed / uniqueArtists.length) * 90);
+      send("progress", {
+        stage: `Analyzing ${artistName}...`,
+        percent,
+        current: processed,
+        total: uniqueArtists.length,
+      });
 
       // MusicBrainz rate limit: 1 request per second
-      await sleep(1000);
+      if (!artistGenreCache.has(artistName)) {
+        await sleep(1000);
+      }
     }
 
     console.log(`Found ${Object.keys(genreCounts).length} unique genres`);
 
     // Step 4: Calculate IQ
+    send("progress", { stage: "Calculating your IQ...", percent: 98 });
     const result = calculateIQ(genreCounts);
 
-    // Get top artists by track count for verdicts
     const artistCounts = {};
     for (const t of playlist.tracks) {
       artistCounts[t.artist] = (artistCounts[t.artist] || 0) + 1;
@@ -351,10 +369,12 @@ app.post("/api/analyze", async (req, res) => {
     result.artistCount = uniqueArtists.length;
     result.playlistImage = playlist.image;
 
-    res.json(result);
+    send("result", result);
+    res.end();
   } catch (err) {
     console.error("Analysis error:", err);
-    res.status(500).json({ error: err.message });
+    send("error", { error: err.message });
+    res.end();
   }
 });
 
