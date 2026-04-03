@@ -89,7 +89,7 @@ function drawBellCurve(iq) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width;
   const h = canvas.height;
-  const padding = { top: 10, bottom: 25, left: 10, right: 10 };
+  const padding = { top: 30, bottom: 25, left: 10, right: 10 };
   const plotW = w - padding.left - padding.right;
   const plotH = h - padding.top - padding.bottom;
 
