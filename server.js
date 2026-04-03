@@ -215,65 +215,111 @@ function calculateIQ(genreCounts) {
   return { iq: baseIQ, breakdown: breakdown.slice(0, 15), modifiers };
 }
 
-function getVerdicts(iq, breakdown, topArtists) {
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function getVerdicts(iq, breakdown, topArtists, artistTrackCounts) {
   const topGenre = breakdown[0]?.genre || "music";
   const secondGenre = breakdown[1]?.genre || null;
   const topArtist = topArtists[0] || "that one artist";
   const secondArtist = topArtists[1] || "various artists";
+  const topArtistCount = artistTrackCounts[topArtist] || 0;
 
-  // Pool of comments per IQ range — pick 3 each time
-  const pools = {
+  // Bullet 1: Fact about their top artist + genre-aware comment
+  const artistFacts = {
     genius: [
-      "You listen to music that doesn't even have lyrics. We get it.",
-      `Your ${topGenre} phase never ended — it became a personality.`,
-      "You've corrected someone on the difference between post-rock and post-punk.",
-      `You've described ${topArtist} as 'criminally underrated' at a party.`,
-      "Your playlist would clear a room at any normal gathering.",
-      "You own at least one album on vinyl that you've never actually played.",
-      `Listening to ${topArtist} doesn't make you deep, but we'll let you have this one.`,
-      "You've unironically used the word 'soundscape' in conversation.",
+      `Your most played artist is ${topArtist} (${topArtistCount} tracks). You've definitely told someone they "just don't get it."`,
+      `${topArtist} dominates your playlist with ${topArtistCount} tracks. This is less a playlist and more a shrine.`,
+      `You have ${topArtistCount} tracks by ${topArtist}. At this point you're not a fan, you're an archivist.`,
+      `${topArtistCount} tracks by ${topArtist}. You've read their Wikipedia page more than once.`,
     ],
     high: [
-      "Your playlist is the sonic equivalent of a turtleneck at a house party.",
-      `Heavy ${topGenre} presence — you've definitely argued about this genre online.`,
-      "You've described an album as 'sonically rich' at least once.",
-      `${topArtist} fans always think they're smarter than they are. Exhibit A.`,
-      "You have strong opinions about Pitchfork reviews.",
-      `Your mix of ${topGenre} and ${secondGenre || "other stuff"} says 'I contain multitudes.'`,
-      "Someone has called your music taste 'interesting' and you took it as a compliment.",
-      `You've recommended ${topArtist} to someone who did not ask.`,
+      `Your most played artist is ${topArtist} (${topArtistCount} tracks). Solid taste, but you knew that already.`,
+      `${topArtist} appears ${topArtistCount} times. You found them before they were cool, right?`,
+      `${topArtistCount} tracks by ${topArtist}. You've 100% made someone listen to them against their will.`,
+      `Your top artist is ${topArtist} with ${topArtistCount} tracks. You think this makes you interesting. It almost does.`,
     ],
     mid: [
-      "Perfectly balanced, as all things should be. Basic, but self-aware.",
-      `${topArtist} is carrying your entire IQ score right now.`,
-      "You sing in the car and you're not sorry about it.",
-      `Your ${topGenre} taste is the musical equivalent of a default ringtone.`,
-      "You've said 'I listen to everything' and meant about 3 genres.",
-      `Without ${topArtist}, this playlist would be in trouble.`,
-      "Your music taste peaked in high school and you're at peace with that.",
-      `${topGenre} and ${secondGenre || "pop"} — the peanut butter and jelly of basic playlists.`,
+      `Your most played artist is ${topArtist} (${topArtistCount} tracks). No surprises here.`,
+      `${topArtist} shows up ${topArtistCount} times. You and literally everyone else.`,
+      `${topArtistCount} tracks by ${topArtist}. Spotify's algorithm did this, not you.`,
+      `Your top artist is ${topArtist} at ${topArtistCount} tracks. The definition of "safe choice."`,
     ],
     low: [
-      "Your playlist is a vibe. Not a thought, but definitely a vibe.",
-      `You listen to ${topArtist} with the windows down. Everyone heard.`,
-      "You don't listen to music to think. You listen to music to FEEL.",
-      `Your ${topGenre} heavy playlist tells us everything we need to know.`,
-      "Your speakers have never once played anything in a minor key.",
-      `${topArtist} appreciates your streams, if nothing else.`,
-      "You've never once Googled the lyrics to understand a song. Respect.",
-      `${secondArtist || topArtist} is doing a lot of heavy lifting here.`,
+      `Your most played artist is ${topArtist} (${topArtistCount} tracks). Your aux privileges are under review.`,
+      `${topArtist} appears ${topArtistCount} times. Even they would tell you to branch out.`,
+      `${topArtistCount} tracks by ${topArtist}. Bold move putting this playlist in public.`,
+      `Your top artist is ${topArtist} with ${topArtistCount} tracks. We're not judging. Actually, we are.`,
     ],
   };
 
-  let pool;
-  if (iq >= 125) pool = pools.genius;
-  else if (iq >= 108) pool = pools.high;
-  else if (iq >= 90) pool = pools.mid;
-  else pool = pools.low;
+  // Bullet 2: Made-up "in common" observation
+  const inCommon = [
+    `Most of your artists have one thing in common: none of them know you exist.`,
+    `Interesting pattern — 73% of your artists peaked creatively before you discovered them.`,
+    `We noticed all your artists share one trait: disappointing second albums.`,
+    `Fun fact: your artists have a combined 0 Grammy wins and 0 interest in your opinion.`,
+    `Statistically, your artists are most popular with people who describe themselves as "old souls."`,
+    `Your artists share a common thread: they've all been someone's "you wouldn't know them" recommendation.`,
+    `Analysis shows your artists are 4x more likely to have a subreddit with under 500 members.`,
+    `Your artists have something in common: they all sound better at 2 AM for some reason.`,
+    `Interesting — 68% of your artists have at some point been described as "an acquired taste."`,
+    `We noticed a pattern: your artists are disproportionately likely to have beef with a music critic.`,
+    `Your artists share one thing: they've all been added to a playlist called "vibes" at least once.`,
+    `Data shows your artists are 3x more likely to have a black-and-white press photo.`,
+    `Common thread: 81% of your artists have been described as "underrated" by someone who just found them.`,
+    `Your artists have one thing in common: they'd all be surprised to be on the same playlist.`,
+    `We found that your artists share a key trait: none of them would pass the aux cord test at a party.`,
+  ];
 
-  // Shuffle and pick 3
-  const shuffled = pool.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, 3);
+  // Bullet 3: Roast based on IQ range
+  const roasts = {
+    genius: [
+      "You've unironically used the word 'soundscape' in conversation.",
+      "Your playlist would clear a room at any normal gathering.",
+      `Your ${topGenre} phase never ended — it became a personality.`,
+      "You own at least one album on vinyl that you've never actually played.",
+      "You've corrected someone on the difference between post-rock and post-punk.",
+      `Your mix of ${topGenre} and ${secondGenre || "whatever else"} is giving "I minored in music theory."`,
+    ],
+    high: [
+      "You have strong opinions about Pitchfork reviews.",
+      "Someone has called your music taste 'interesting' and you took it as a compliment.",
+      "You've described an album as 'sonically rich' at least once.",
+      "Your playlist is the sonic equivalent of a turtleneck at a house party.",
+      `Heavy ${topGenre} presence — you've definitely argued about this genre online.`,
+      `You've recommended ${secondArtist} to someone who did not ask.`,
+    ],
+    mid: [
+      "You've said 'I listen to everything' and meant about 3 genres.",
+      "Your music taste peaked in high school and you're at peace with that.",
+      `${topGenre} and ${secondGenre || "pop"} — the peanut butter and jelly of basic playlists.`,
+      "You sing in the car and you're not sorry about it.",
+      "Perfectly balanced, as all things should be. Basic, but self-aware.",
+      "You have a playlist called 'chill' that is neither chill nor a playlist — it's a cry for help.",
+    ],
+    low: [
+      "You don't listen to music to think. You listen to music to FEEL.",
+      "Your speakers have never once played anything in a minor key.",
+      "You've never once Googled the lyrics to understand a song. Respect.",
+      `Your ${topGenre} heavy playlist tells us everything we need to know.`,
+      "Your playlist is a vibe. Not a thought, but definitely a vibe.",
+      "The algorithm built this playlist and you just... let it happen.",
+    ],
+  };
+
+  let tier;
+  if (iq >= 125) tier = "genius";
+  else if (iq >= 108) tier = "high";
+  else if (iq >= 90) tier = "mid";
+  else tier = "low";
+
+  return [
+    pick(artistFacts[tier]),
+    pick(inCommon),
+    pick(roasts[tier]),
+  ];
 }
 
 // Routes
@@ -363,7 +409,7 @@ app.get("/api/analyze", async (req, res) => {
       .slice(0, 5)
       .map(([name]) => name);
 
-    result.verdicts = getVerdicts(result.iq, result.breakdown, topArtists);
+    result.verdicts = getVerdicts(result.iq, result.breakdown, topArtists, artistCounts);
     result.playlistName = playlist.name;
     result.trackCount = playlist.tracks.length;
     result.artistCount = uniqueArtists.length;
