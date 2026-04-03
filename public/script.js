@@ -84,9 +84,100 @@ function analyze() {
   };
 }
 
+function drawBellCurve(iq) {
+  const canvas = document.getElementById("bell-curve");
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width;
+  const h = canvas.height;
+  const padding = { top: 10, bottom: 25, left: 10, right: 10 };
+  const plotW = w - padding.left - padding.right;
+  const plotH = h - padding.top - padding.bottom;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Bell curve: mean=100, sd=15 (standard IQ distribution)
+  const mean = 100;
+  const sd = 15;
+  function gaussian(x) {
+    return Math.exp(-0.5 * Math.pow((x - mean) / sd, 2));
+  }
+
+  // Draw filled curve
+  const minX = 55;
+  const maxX = 155;
+  const steps = 200;
+
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top + plotH);
+
+  for (let i = 0; i <= steps; i++) {
+    const x = minX + (maxX - minX) * (i / steps);
+    const y = gaussian(x);
+    const px = padding.left + (i / steps) * plotW;
+    const py = padding.top + plotH - y * plotH * 0.95;
+    ctx.lineTo(px, py);
+  }
+
+  ctx.lineTo(padding.left + plotW, padding.top + plotH);
+  ctx.closePath();
+  ctx.fillStyle = "#f0f0f0";
+  ctx.fill();
+
+  // Draw curve outline
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const x = minX + (maxX - minX) * (i / steps);
+    const y = gaussian(x);
+    const px = padding.left + (i / steps) * plotW;
+    const py = padding.top + plotH - y * plotH * 0.95;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.strokeStyle = "#ccc";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Draw marker line at user's IQ
+  const clampedIQ = Math.max(minX, Math.min(maxX, iq));
+  const markerX = padding.left + ((clampedIQ - minX) / (maxX - minX)) * plotW;
+  const markerY = gaussian(clampedIQ);
+  const markerPY = padding.top + plotH - markerY * plotH * 0.95;
+
+  ctx.beginPath();
+  ctx.moveTo(markerX, padding.top + plotH);
+  ctx.lineTo(markerX, markerPY - 4);
+  ctx.strokeStyle = "#1a1a1a";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Draw dot at top of marker
+  ctx.beginPath();
+  ctx.arc(markerX, markerPY - 4, 4, 0, Math.PI * 2);
+  ctx.fillStyle = "#1a1a1a";
+  ctx.fill();
+
+  // "You" label
+  ctx.font = "500 11px 'DM Sans', sans-serif";
+  ctx.fillStyle = "#1a1a1a";
+  ctx.textAlign = "center";
+  ctx.fillText("You", markerX, markerPY - 14);
+
+  // X-axis labels
+  ctx.font = "400 10px 'DM Sans', sans-serif";
+  ctx.fillStyle = "#bbb";
+  ctx.textAlign = "center";
+  const labels = [60, 80, 100, 120, 140];
+  for (const val of labels) {
+    const lx = padding.left + ((val - minX) / (maxX - minX)) * plotW;
+    ctx.fillText(val, lx, h - 6);
+  }
+}
+
 function renderResult(data) {
   const iqEl = document.getElementById("iq-number");
   animateNumber(iqEl, data.iq);
+
+  drawBellCurve(data.iq);
 
   const verdictsEl = document.getElementById("verdicts");
   verdictsEl.innerHTML = "";

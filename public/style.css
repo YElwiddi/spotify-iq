@@ -178,7 +178,12 @@ body {
   font-size: 7rem;
   font-weight: 400;
   line-height: 1;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+.bell-curve-container {
+  margin: 0 auto 20px;
+  max-width: 400px;
 }
 
 .verdicts {
