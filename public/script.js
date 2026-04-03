@@ -179,12 +179,14 @@ function renderResult(data) {
 
   drawBellCurve(data.iq);
 
-  const verdictsEl = document.getElementById("verdicts");
-  verdictsEl.innerHTML = "";
-  for (const v of data.verdicts) {
-    const li = document.createElement("li");
-    li.textContent = v;
-    verdictsEl.appendChild(li);
+  // Tags
+  const tagsEl = document.getElementById("tags");
+  tagsEl.innerHTML = "";
+  for (const t of data.tags) {
+    const span = document.createElement("span");
+    span.className = `tag ${t.type}`;
+    span.textContent = t.label;
+    tagsEl.appendChild(span);
   }
 
   const img = document.getElementById("playlist-img");

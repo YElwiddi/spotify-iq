@@ -186,28 +186,41 @@ body {
   max-width: 400px;
 }
 
-.verdicts {
-  list-style: none;
-  padding: 0 12px;
-  margin-bottom: 32px;
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 28px;
+  padding: 0 8px;
 }
 
-.verdicts li {
-  color: #666;
-  font-size: 0.95rem;
-  font-style: italic;
-  line-height: 1.5;
-  margin-bottom: 8px;
-  padding-left: 16px;
-  position: relative;
-  text-align: left;
+.tag {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
 }
 
-.verdicts li::before {
-  content: "\2022";
-  position: absolute;
-  left: 0;
-  color: #ccc;
+.tag.artist {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.tag.genre {
+  background: #e8e8e8;
+  color: #333;
+}
+
+.tag.vibe {
+  background: #f0e6ff;
+  color: #6b21a8;
+}
+
+.tag.trait {
+  background: #e0f2fe;
+  color: #0369a1;
 }
 
 .playlist-info {
