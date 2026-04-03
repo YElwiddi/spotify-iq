@@ -110,8 +110,10 @@ async function getArtistGenres(artistName) {
 
     const genres = artist.tags
       .filter((t) => t.count > 0)
+      .sort((a, b) => b.count - a.count)
       .map((t) => t.name.toLowerCase())
-      .filter((g) => !junkTags.has(g) && g.length > 3 && findGenreScore(g) !== null);
+      .filter((g) => !junkTags.has(g) && g.length > 3 && findGenreScore(g) !== null)
+      .slice(0, 3); // Only keep top 3 most-voted genre tags
 
     artistGenreCache.set(artistName, genres);
     return genres;
@@ -168,21 +170,36 @@ function calculateIQ(genreCounts) {
 
   if (matchedWeight === 0) return { iq: 100, breakdown: [], modifiers: [] };
 
-  let baseIQ = weightedSum / matchedWeight;
+  // Sort breakdown to find top genres
+  breakdown.sort((a, b) => b.weight - a.weight);
+
+  // Blend: 60% weighted average + 40% top-3 genre average
+  // This prevents regression to the mean by letting dominant genres pull harder
+  const weightedAvg = weightedSum / matchedWeight;
+  const top3 = breakdown.slice(0, 3);
+  const top3Avg = top3.reduce((sum, g) => sum + g.score, 0) / top3.length;
+  let baseIQ = weightedAvg * 0.6 + top3Avg * 0.4;
+
   const modifiers = [];
 
   const uniqueGenres = genres.length;
   if (uniqueGenres > 20) {
-    modifiers.push({ name: "Genre diversity", value: 4 });
-    baseIQ += 4;
+    modifiers.push({ name: "Genre diversity", value: 6 });
+    baseIQ += 6;
   } else if (uniqueGenres > 10) {
-    modifiers.push({ name: "Genre diversity", value: 2 });
-    baseIQ += 2;
+    modifiers.push({ name: "Genre diversity", value: 3 });
+    baseIQ += 3;
+  } else if (uniqueGenres <= 4) {
+    modifiers.push({ name: "One-trick pony", value: -5 });
+    baseIQ -= 5;
   }
 
   // Echo chamber penalty
   const topGenreWeight = Math.max(...genres.map(([, c]) => c)) / totalCount;
   if (topGenreWeight > 0.7) {
+    modifiers.push({ name: "Echo chamber", value: -6 });
+    baseIQ -= 6;
+  } else if (topGenreWeight > 0.5) {
     modifiers.push({ name: "Echo chamber", value: -3 });
     baseIQ -= 3;
   }
@@ -197,20 +214,43 @@ function calculateIQ(genreCounts) {
     .filter(([g]) => instrumentalGenres.some((ig) => g.includes(ig)))
     .reduce((sum, [, c]) => sum + c, 0) / totalCount;
   if (instrumentalWeight > 0.3) {
+    modifiers.push({ name: "Instrumental bonus", value: 5 });
+    baseIQ += 5;
+  } else if (instrumentalWeight > 0.15) {
     modifiers.push({ name: "Instrumental bonus", value: 3 });
     baseIQ += 3;
-  } else if (instrumentalWeight > 0.15) {
-    modifiers.push({ name: "Instrumental bonus", value: 1 });
-    baseIQ += 1;
+  }
+
+  // Basic tax: top 3 genres are all mainstream
+  const basicGenres = ["pop", "dance pop", "edm", "hip hop", "rap", "trap",
+    "teen pop", "boy band", "bubblegum pop", "reggaeton", "country pop"];
+  const top3Genres = breakdown.slice(0, 3).map((g) => g.genre);
+  if (top3Genres.every((g) => basicGenres.some((bg) => g.includes(bg)))) {
+    modifiers.push({ name: "Basic tax", value: -8 });
+    baseIQ -= 8;
+  }
+
+  // Pretentiousness bonus: heavy experimental/art presence
+  const pretentious = ["experimental", "avant-garde", "art rock", "art pop",
+    "free jazz", "math rock", "post-rock", "chamber pop", "baroque pop",
+    "minimalism", "idm", "noise", "no wave", "krautrock"];
+  const pretWeight = genres
+    .filter(([g]) => pretentious.some((pg) => g.includes(pg)))
+    .reduce((sum, [, c]) => sum + c, 0) / totalCount;
+  if (pretWeight > 0.3) {
+    modifiers.push({ name: "Pretentiousness bonus", value: 8 });
+    baseIQ += 8;
+  } else if (pretWeight > 0.15) {
+    modifiers.push({ name: "Pretentiousness bonus", value: 4 });
+    baseIQ += 4;
   }
 
   // Cosmic variance
-  const randomOffset = Math.round((Math.random() - 0.5) * 4);
+  const randomOffset = Math.round((Math.random() - 0.5) * 8);
   modifiers.push({ name: "Cosmic variance", value: randomOffset });
   baseIQ += randomOffset;
 
   baseIQ = Math.max(60, Math.min(150, Math.round(baseIQ)));
-  breakdown.sort((a, b) => b.weight - a.weight);
 
   return { iq: baseIQ, breakdown: breakdown.slice(0, 15), modifiers };
 }
